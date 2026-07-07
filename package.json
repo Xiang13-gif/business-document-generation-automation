@@ -1,0 +1,56 @@
+{
+  "name": "business-document-generation-automation",
+  "version": "2.0.0",
+  "description": "A banking BA portfolio case study for rule-based commercial credit document checklist generation, waiver controls, approval routing, UAT, traceability, and dashboards.",
+  "private": false,
+  "packageManager": "pnpm@11.7.0",
+  "type": "module",
+  "scripts": {
+    "build": "next build",
+    "check": "pnpm run check:security && pnpm run lint && pnpm run typecheck && pnpm run build",
+    "check:security": "node scripts/check-security.mjs",
+    "dev": "next dev --hostname 127.0.0.1",
+    "lint": "eslint . --max-warnings=0",
+    "start": "next start --hostname 127.0.0.1",
+    "typecheck": "tsc --noEmit"
+  },
+  "keywords": [
+    "business-analyst",
+    "banking",
+    "credit-risk",
+    "commercial-lending",
+    "loan-origination",
+    "document-automation",
+    "document-checklist",
+    "business-rules",
+    "traceability",
+    "approval-routing",
+    "policy-exceptions",
+    "uat",
+    "portfolio",
+    "nextjs"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "clsx": "latest",
+    "lucide-react": "latest",
+    "next": "latest",
+    "react": "latest",
+    "react-dom": "latest",
+    "recharts": "latest",
+    "tailwind-merge": "latest"
+  },
+  "devDependencies": {
+    "@eslint/eslintrc": "latest",
+    "@types/node": "latest",
+    "@types/react": "latest",
+    "@types/react-dom": "latest",
+    "autoprefixer": "latest",
+    "eslint": "^9.39.4",
+    "eslint-config-next": "latest",
+    "postcss": "latest",
+    "tailwindcss": "3.4.17",
+    "typescript": "latest"
+  }
+}
