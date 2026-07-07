@@ -47,6 +47,8 @@ export type FinancialStatementStatus = "Available" | "Not Available" | "Waiver R
 
 export type RequirementLevel = "Required" | "Conditional" | "Optional";
 
+export type DocumentStatus = "Not Uploaded" | "Uploaded" | "Verified" | "Waived" | "Not Applicable";
+
 export type DocumentCategory =
   | "General"
   | "Financial"

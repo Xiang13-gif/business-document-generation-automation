@@ -5,7 +5,7 @@ export default function ChecklistPage() {
   return (
     <>
       <PageHeader
-        description="Generate document requirements from application type, facility type, collateral type, customer type, risk level, and financial statement availability."
+        description="Generate document requirements, mark document status, capture waiver reasons, and evaluate whether required items are ready for submission."
         eyebrow="Module 1"
         title="Document Checklist Generator"
       />

@@ -46,6 +46,7 @@ Common pain points modeled in this project:
 
 - Rule-based document checklist generation
 - Mandatory, conditional, and optional document classification
+- Document status tracking and submission readiness gate
 - Waiver and missing-document control thinking
 - Risk-based delegated authority routing
 - Policy exception capture and governance
@@ -59,7 +60,7 @@ Common pain points modeled in this project:
 
 | Module | Purpose |
 | --- | --- |
-| Document Checklist Generator | Generates document requirements from application type, facility type, collateral type, customer type, risk level, and financial statement availability. |
+| Document Checklist Generator | Generates document requirements, tracks document status, captures waiver reasons, and evaluates required-document readiness before submission. |
 | Credit Case 360 | Links case profile, document readiness, lifecycle gates, approval route, exceptions, UAT evidence, audit controls, BA recommendation, and next actions. |
 | Approval Routing Simulator | Recommends delegated authority using exposure, risk level, collateral coverage, customer segment, facility type, and exception severity. |
 | Policy Exception Register | Tracks exception severity, mitigation, owner, aging, approval tier, control evidence, requirement linkage, and UAT coverage. |
@@ -73,10 +74,12 @@ Common pain points modeled in this project:
 ## Suggested Demo Flow
 
 1. Open `/checklist` and generate a document checklist for a new term loan with property collateral.
-2. Change financial statement status to `Not Available` or `Waiver Requested` and review the triggered warning and control documents.
-3. Open `/approval-routing` and simulate how exposure, risk, collateral, and exception severity change the approval tier.
-4. Open `/case-360` to see how document readiness connects to lifecycle gates, exceptions, UAT evidence, and next actions.
-5. Open `/traceability` to show how BA artifacts connect from requirement to rule to test case and change request.
+2. Mark required documents as uploaded and observe the submission readiness gate.
+3. Change a document to `Waived` without a reason and review the blocker created by the control rule.
+4. Change financial statement status to `Not Available` or `Waiver Requested` and review the triggered warning and control documents.
+5. Open `/approval-routing` and simulate how exposure, risk, collateral, and exception severity change the approval tier.
+6. Open `/case-360` to see how document readiness connects to lifecycle gates, exceptions, UAT evidence, and next actions.
+7. Open `/traceability` to show how BA artifacts connect from requirement to rule to test case and change request.
 
 ## Business Analyst Artifacts
 
@@ -105,6 +108,7 @@ The application uses mock data only. Metrics are portfolio assumptions for demon
 - Case lifecycle readiness gates
 - Document readiness percentage
 - Missing, waived, and verified document handling
+- Submission blocker count and required-document readiness gate
 - Policy exception severity and aging
 - UAT pass rate, failed cases, blocked cases, and pending retest
 - High-priority change request count
@@ -198,7 +202,7 @@ Suggested highlights:
 - Excel / PDF export
 - Workflow approval state machine
 - Server-side audit trail persistence
-- Document upload status workflow
+- Server-side persistence for document status workflow
 - Reviewer comments and sign-off workflow
 
 ## Disclaimer

@@ -75,10 +75,14 @@ Out of scope:
 | REQ020 | Show pipeline aging, bottlenecks, owner role, exception volume, and document readiness in the dashboard. |
 | REQ021 | Show end-to-end case lifecycle evidence across profile, documents, analysis, route, exceptions, UAT, audit, and next actions. |
 | REQ022 | Calculate release posture from readiness gates so blocked evidence prevents a case from appearing ready. |
+| REQ023 | Track document status and calculate required-document submission readiness. |
+| REQ024 | Block submission readiness when a waived document has no waiver reason. |
 
 ## Success Criteria
 
 - User can generate checklist from business inputs.
+- User can update document status and see required-document readiness.
+- User can see a blocker when a waived document has no waiver reason.
 - User can simulate approval route and see rationale, controls, SLA, and escalation triggers.
 - User can review policy exceptions by status and severity.
 - User can filter and update UAT case status.
