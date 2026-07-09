@@ -44,6 +44,26 @@ Acceptance criteria:
 - Given a document is mandatory, when it is still Not Uploaded, then the case cannot be marked Ready for Facility Setup.
 - Given a document is waived, when the waiver is approved, then the waiver reason appears in the checklist.
 
+### US-004A: Approve Document Waiver
+
+As an Approver, I want document waivers to require reason and maker-checker review so that waived items do not bypass control without evidence.
+
+Acceptance criteria:
+
+- Given a document is marked Waived, when no waiver reason is provided, then the submission gate remains blocked.
+- Given a waiver request is submitted, when maker role and approver role are the same, then approval is blocked.
+- Given a waiver request has reason and maker-checker separation, when the approver approves it, then the document can contribute to readiness.
+
+### US-004B: Review Package Summary and SLA
+
+As a BA Reviewer, I want a package summary and SLA indicators so that I can explain whether the credit submission package is ready, blocked, or under controlled watch.
+
+Acceptance criteria:
+
+- Given required documents are missing or waivers are not approved, when I open the summary, then package posture is Blocked.
+- Given required items are ready but document aging has watch or breach items, when I open the summary, then package posture is Controlled Watch.
+- Given the summary is exported, then readiness, waiver, SLA, blocker, and BA recommendation fields are included.
+
 ## Epic 3: Credit Assessment and Exceptions
 
 ### US-005: Structured Credit Assessment

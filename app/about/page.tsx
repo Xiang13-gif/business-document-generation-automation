@@ -25,7 +25,7 @@ const sections = [
   {
     title: "Functional Scope",
     items: [
-      "Document Checklist Generator with rule-based output, document status tracking, submission readiness gate, waiver controls, and export.",
+      "Document Checklist Generator with rule-based output, document status tracking, waiver approval workflow, submission readiness gate, SLA aging indicators, package summary, and export.",
       "Credit Case 360 with lifecycle status, readiness gates, linked evidence, BA recommendation, and next best actions.",
       "Approval Routing Simulator with exposure, risk, collateral, segment, exception severity, maker-checker, and escalation logic.",
       "Policy Exception Register with severity, owner, mitigation, aging, approval authority, evidence, requirement linkage, and UAT coverage.",
@@ -39,6 +39,8 @@ const sections = [
     items: [
       "Mandatory document gaps should block submission unless a controlled waiver path is used.",
       "Waived documents require a reason before the submission gate can clear.",
+      "Waiver approval should preserve maker-checker segregation before a waived item is treated as ready.",
+      "Document aging should surface SLA watch or breach items for operational follow-up.",
       "Approval route overrides require reason, authorized role, and audit trail.",
       "Missing financial statements require waiver approval and audit trail.",
       "High risk customers require enhanced due diligence.",

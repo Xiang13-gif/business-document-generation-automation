@@ -30,6 +30,9 @@ The requirements below are written to be testable and explainable. Each requirem
 | FR-020 | The system shall show credit pipeline aging, bottlenecks, owner role, exception count, and document readiness in the executive dashboard. | Management needs visibility into operational credit blockers. | Dashboard highlights aged cases, owner role, risk level, exposure, document readiness, and exception count. |
 | FR-021 | The system shall provide a Case 360 view showing case profile, lifecycle steps, readiness gates, linked exceptions, UAT evidence, change requests, BA recommendation, and next best actions. | Stakeholders need one evidence-led case view instead of switching across disconnected trackers. | User can select a case and see lifecycle status, owners, blockers, evidence, and linked artifacts. |
 | FR-022 | The system shall derive release posture from readiness gate statuses. | A case should not appear ready while required evidence is blocked. | Case posture is Not Ready when any gate is Block, Controlled Watch when gates are Watch only, and Ready when all gates Pass. |
+| FR-023 | The system shall route waived document items through waiver approval workflow. | Waivers are control-sensitive and should not clear readiness without independent approval. | Waiver item has reason, maker role, approver role, approval status, decision note, and maker-checker validation. |
+| FR-024 | The system shall calculate SLA status for document follow-up based on aging days and document state. | Operations teams need early visibility of documentation delays. | Document item displays On Track, Watch, or Breach based on status, requirement level, waiver status, and aging days. |
+| FR-025 | The system shall generate a package summary for credit submission readiness. | Reviewers need a concise view of posture, blockers, waiver status, SLA risk, and BA recommendation. | Package summary shows posture, readiness, blockers, waiver counts, SLA counts, and BA recommendation with export option. |
 
 ## Non-Functional Requirements
 
@@ -51,3 +54,4 @@ The requirements below are written to be testable and explainable. Each requirem
 | RPT-004 | Document Readiness | Show missing, waived, and verified documents by case. |
 | RPT-005 | Turnaround Time | Measure time from submission to credit decision and from approval to readiness. |
 | RPT-006 | Case Readiness Summary | Show release posture, blocked gates, watch gates, linked exceptions, UAT evidence, and next action owner for selected cases. |
+| RPT-007 | Submission Package Summary | Show package posture, waiver approval position, SLA risk, blockers, and BA recommendation. |

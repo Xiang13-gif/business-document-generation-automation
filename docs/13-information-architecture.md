@@ -9,7 +9,7 @@
 | Case 360 | End-to-end case lifecycle evidence across case profile, documents, analysis, approval route, exceptions, UAT, audit, readiness gates, BA recommendation, and next actions. |
 | Approval Routing | Risk-based delegated authority simulation for exposure, risk, collateral, segment, and exception severity. |
 | Exception Register | Policy exception governance with severity, owner, mitigation, aging, approval tier, and evidence. |
-| Checklist Generator | Rule-driven document requirement generation, document status review, waiver reason capture, and submission readiness gate. |
+| Checklist Generator | Rule-driven document requirement generation, document status review, waiver approval workflow, SLA aging, package summary, and submission readiness gate. |
 | UAT Tracker | UAT test case management and delivery monitoring. |
 | CR Impact | Change request impact analysis and BA recommendation. |
 | Role View | Stakeholder responsibilities, control focus, role UAT queue, and CR exposure. |
@@ -24,7 +24,7 @@
 | ChecklistInput | User-selected application, facility, collateral, customer, risk, and financial statement values. |
 | ApprovalRoutingInput | Application, facility, segment, exposure, risk, collateral coverage, and exception severity. |
 | ApprovalRouteResult | Recommended approval tier, routing score, SLA, maker-checker requirement, rationale, controls, and escalation triggers. |
-| ChecklistDocument | Generated document with category, requirement level, reason, business rule, review status, and waiver reason where applicable. |
+| ChecklistDocument | Generated document with category, requirement level, reason, business rule, review status, SLA status, waiver reason, and waiver approval state where applicable. |
 | BusinessRule | Rule ID, description, and control point. |
 | PolicyException | Exception ID, type, severity, status, owner, mitigation, approval tier, linked requirement, linked UAT case, and evidence. |
 | CreditPipelineCase | Case ID, segment, facility, exposure, risk, stage, owner role, aging, exception count, and document readiness. |
@@ -44,8 +44,11 @@ The checklist module uses a rule engine in `lib/checklist-rules.ts`. UI selectio
 - triggered business rules
 - risk warnings
 - document status and submission readiness signals
+- waiver approval state
+- SLA watch and breach indicators
+- package summary posture and BA recommendation
 
-The UI does not hardcode final checklist output. It renders the rule engine result and layers review status on top for submission readiness control.
+The UI does not hardcode final checklist output. It renders the rule engine result and layers review status, waiver workflow, SLA indicators, and package posture on top for submission readiness control.
 
 ## Page Design
 

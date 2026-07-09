@@ -49,6 +49,10 @@ export type RequirementLevel = "Required" | "Conditional" | "Optional";
 
 export type DocumentStatus = "Not Uploaded" | "Uploaded" | "Verified" | "Waived" | "Not Applicable";
 
+export type WaiverApprovalStatus = "Not Requested" | "Draft" | "Pending Approval" | "Approved" | "Rejected";
+
+export type DocumentSlaStatus = "On Track" | "Watch" | "Breach";
+
 export type DocumentCategory =
   | "General"
   | "Financial"

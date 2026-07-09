@@ -5,7 +5,7 @@ export default function ChecklistPage() {
   return (
     <>
       <PageHeader
-        description="Generate document requirements, mark document status, capture waiver reasons, and evaluate whether required items are ready for submission."
+        description="Generate document requirements, mark document status, route waiver approvals, monitor SLA aging, and evaluate whether the credit submission package is ready."
         eyebrow="Module 1"
         title="Document Checklist Generator"
       />

@@ -77,12 +77,18 @@ Out of scope:
 | REQ022 | Calculate release posture from readiness gates so blocked evidence prevents a case from appearing ready. |
 | REQ023 | Track document status and calculate required-document submission readiness. |
 | REQ024 | Block submission readiness when a waived document has no waiver reason. |
+| REQ025 | Route waived documents through maker-checker waiver approval workflow. |
+| REQ026 | Track document aging and surface SLA watch or breach indicators. |
+| REQ027 | Generate a credit submission package summary with BA recommendation. |
 
 ## Success Criteria
 
 - User can generate checklist from business inputs.
 - User can update document status and see required-document readiness.
 - User can see a blocker when a waived document has no waiver reason.
+- User can submit, approve, and reject waiver requests with maker-checker validation.
+- User can update document aging and see SLA watch or breach status.
+- User can export a package summary showing posture, blockers, waiver status, SLA risk, and BA recommendation.
 - User can simulate approval route and see rationale, controls, SLA, and escalation triggers.
 - User can review policy exceptions by status and severity.
 - User can filter and update UAT case status.

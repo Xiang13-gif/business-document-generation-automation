@@ -66,11 +66,15 @@ Add screenshots under `public/screenshots/` if available:
 ## Demo Flow for Reviewers
 
 1. Start with `/checklist`.
-2. Change financial statement status to `Not Available`.
-3. Point out the waiver control documents and warning message.
-4. Open `/approval-routing` to show how risk and exposure affect approval authority.
-5. Open `/case-360` to show lifecycle readiness and linked evidence.
-6. Open `/traceability` to show requirement-to-test-to-change-request coverage.
+2. Mark required documents as uploaded and point out the readiness gate.
+3. Change one document to `Waived`, add a waiver reason, submit it, and approve it through maker-checker workflow.
+4. Set the same maker and approver role to show the maker-checker blocker.
+5. Increase aging days on a document to show SLA `Watch` or `Breach`.
+6. Export the package summary and explain the BA recommendation.
+7. Change financial statement status to `Not Available`.
+8. Open `/approval-routing` to show how risk and exposure affect approval authority.
+9. Open `/case-360` to show lifecycle readiness and linked evidence.
+10. Open `/traceability` to show requirement-to-test-to-change-request coverage.
 
 ## LinkedIn Project Description
 
@@ -81,7 +85,7 @@ Built a Business Document Generation Automation case study for commercial credit
 Suggested bullets:
 
 - Designed rule-based checklist generation using application type, facility type, collateral type, customer type, risk level, and financial statement availability.
-- Modeled missing document and waiver scenarios with control evidence, warning messages, and audit trail thinking.
+- Modeled missing document, waiver approval, maker-checker, SLA aging, and package readiness scenarios with control evidence and audit trail thinking.
 - Built a Credit Case 360 view linking document readiness, lifecycle gates, approval route, policy exceptions, UAT evidence, change requests, and BA recommendations.
 - Prepared BA artifacts including requirements, business rules, UAT cases, change impact analysis, traceability, data dictionary, and confidentiality boundaries.
 

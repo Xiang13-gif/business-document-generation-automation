@@ -1,6 +1,6 @@
 "use client";
 
-import { AlertTriangle, CheckCircle2, Download, RotateCcw } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Download, FileText, RotateCcw, ShieldCheck } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Badge, Button, Card, ProgressBar, StatCard } from "@/components/ui";
 import { recordAuditEvent } from "@/lib/audit-log";
@@ -10,12 +10,15 @@ import type {
   ChecklistInput,
   CollateralType,
   CustomerType,
+  DocumentSlaStatus,
   DocumentStatus,
   DocumentCategory,
   FacilityType,
   FinancialStatementStatus,
   RequirementLevel,
-  RiskLevel
+  RiskLevel,
+  UatRole,
+  WaiverApprovalStatus
 } from "@/lib/types";
 import { downloadCsv, toCsv } from "@/lib/utils";
 
@@ -34,6 +37,7 @@ const customerTypes: CustomerType[] = ["Individual", "Sole Proprietor", "Partner
 const riskLevels: RiskLevel[] = ["Low", "Medium", "High"];
 const financialStatuses: FinancialStatementStatus[] = ["Available", "Not Available", "Waiver Requested"];
 const documentStatuses: DocumentStatus[] = ["Not Uploaded", "Uploaded", "Verified", "Waived", "Not Applicable"];
+const workflowRoles: UatRole[] = ["RM", "Credit Analyst", "Approver", "Credit Admin", "System Admin"];
 const categories: Array<DocumentCategory | "All"> = [
   "All",
   "General",
@@ -46,11 +50,21 @@ const categories: Array<DocumentCategory | "All"> = [
 type DocumentReviewState = {
   status: DocumentStatus;
   waiverReason: string;
+  waiverStatus: WaiverApprovalStatus;
+  waiverMakerRole: UatRole;
+  waiverApproverRole: UatRole;
+  waiverDecisionNote: string;
+  agingDays: number;
 };
 
 const defaultDocumentReviewState: DocumentReviewState = {
   status: "Not Uploaded",
-  waiverReason: ""
+  waiverReason: "",
+  waiverStatus: "Not Requested",
+  waiverMakerRole: "RM",
+  waiverApproverRole: "Approver",
+  waiverDecisionNote: "",
+  agingDays: 0
 };
 
 function SelectField<T extends string>({
@@ -98,8 +112,91 @@ function statusTone(status: DocumentStatus) {
   return "danger";
 }
 
+function waiverTone(status: WaiverApprovalStatus) {
+  if (status === "Approved") {
+    return "success";
+  }
+  if (status === "Pending Approval" || status === "Draft") {
+    return "warning";
+  }
+  if (status === "Rejected") {
+    return "danger";
+  }
+  return "default";
+}
+
+function slaTone(status: DocumentSlaStatus) {
+  if (status === "Breach") {
+    return "danger";
+  }
+  if (status === "Watch") {
+    return "warning";
+  }
+  return "success";
+}
+
 function isSubmissionReadyStatus(status: DocumentStatus) {
   return status === "Uploaded" || status === "Verified" || status === "Waived" || status === "Not Applicable";
+}
+
+function isWaiverMakerCheckerClear(reviewState: DocumentReviewState) {
+  return reviewState.waiverMakerRole !== reviewState.waiverApproverRole;
+}
+
+function isWaiverComplete(reviewState: DocumentReviewState) {
+  if (reviewState.status !== "Waived") {
+    return true;
+  }
+
+  return (
+    reviewState.waiverReason.trim().length > 0 &&
+    reviewState.waiverStatus === "Approved" &&
+    isWaiverMakerCheckerClear(reviewState)
+  );
+}
+
+function getSlaStatus(requirementLevel: RequirementLevel, reviewState: DocumentReviewState): DocumentSlaStatus {
+  if (reviewState.status === "Verified" || reviewState.status === "Not Applicable") {
+    return "On Track";
+  }
+
+  if (reviewState.status === "Waived") {
+    if (reviewState.waiverStatus === "Approved") {
+      return "On Track";
+    }
+    if (reviewState.agingDays >= 3) {
+      return "Breach";
+    }
+    if (reviewState.agingDays >= 2) {
+      return "Watch";
+    }
+    return "On Track";
+  }
+
+  if (reviewState.status === "Uploaded") {
+    if (reviewState.agingDays >= 4) {
+      return "Breach";
+    }
+    if (reviewState.agingDays >= 2) {
+      return "Watch";
+    }
+    return "On Track";
+  }
+
+  if (requirementLevel === "Required") {
+    if (reviewState.agingDays >= 5) {
+      return "Breach";
+    }
+    if (reviewState.agingDays >= 3) {
+      return "Watch";
+    }
+  }
+
+  if (requirementLevel === "Conditional" && reviewState.agingDays >= 7) {
+    return "Watch";
+  }
+
+  return "On Track";
 }
 
 export function DocumentChecklistGenerator() {
@@ -115,24 +212,65 @@ export function DocumentChecklistGenerator() {
   const requiredDocuments = result.documents.filter((document) => document.requirementLevel === "Required");
 
   const getReviewState = (documentId: string) => documentReview[documentId] ?? defaultDocumentReviewState;
+  const reviewedDocuments = result.documents.map((document) => {
+    const reviewState = getReviewState(document.id);
+    const slaStatus = getSlaStatus(document.requirementLevel, reviewState);
+    return { document, reviewState, slaStatus };
+  });
   const readyRequiredDocuments = requiredDocuments.filter((document) => {
     const reviewState = getReviewState(document.id);
-    return isSubmissionReadyStatus(reviewState.status) && (reviewState.status !== "Waived" || reviewState.waiverReason.trim().length > 0);
+    return isSubmissionReadyStatus(reviewState.status) && isWaiverComplete(reviewState);
   });
   const missingRequiredDocuments = requiredDocuments.filter((document) => getReviewState(document.id).status === "Not Uploaded");
   const incompleteWaiverDocuments = result.documents.filter((document) => {
     const reviewState = getReviewState(document.id);
     return reviewState.status === "Waived" && reviewState.waiverReason.trim().length === 0;
   });
+  const pendingWaiverDocuments = result.documents.filter((document) => {
+    const reviewState = getReviewState(document.id);
+    return (
+      reviewState.status === "Waived" &&
+      reviewState.waiverReason.trim().length > 0 &&
+      ["Not Requested", "Draft", "Pending Approval"].includes(reviewState.waiverStatus)
+    );
+  });
+  const rejectedWaiverDocuments = result.documents.filter((document) => {
+    const reviewState = getReviewState(document.id);
+    return reviewState.status === "Waived" && reviewState.waiverStatus === "Rejected";
+  });
+  const makerCheckerWaiverDocuments = result.documents.filter((document) => {
+    const reviewState = getReviewState(document.id);
+    return reviewState.status === "Waived" && !isWaiverMakerCheckerClear(reviewState);
+  });
+  const approvedWaiverDocuments = result.documents.filter((document) => {
+    const reviewState = getReviewState(document.id);
+    return reviewState.status === "Waived" && reviewState.waiverStatus === "Approved";
+  });
+  const slaWatchDocuments = reviewedDocuments.filter((item) => item.slaStatus === "Watch");
+  const slaBreachDocuments = reviewedDocuments.filter((item) => item.slaStatus === "Breach");
   const submissionBlockers = [
     ...missingRequiredDocuments.map((document) => `${document.name} is still Not Uploaded.`),
-    ...incompleteWaiverDocuments.map((document) => `${document.name} is Waived but missing waiver reason.`)
+    ...incompleteWaiverDocuments.map((document) => `${document.name} is Waived but missing waiver reason.`),
+    ...pendingWaiverDocuments.map((document) => `${document.name} waiver is not approved yet.`),
+    ...rejectedWaiverDocuments.map((document) => `${document.name} waiver was rejected.`),
+    ...makerCheckerWaiverDocuments.map((document) => `${document.name} waiver maker and approver cannot be the same role.`)
   ];
   const readinessPercentage = requiredCount === 0 ? 100 : Math.round((readyRequiredDocuments.length / requiredCount) * 100);
   const waiverCount = result.documents.filter((document) => getReviewState(document.id).status === "Waived").length;
   const verifiedCount = result.documents.filter((document) => getReviewState(document.id).status === "Verified").length;
   const uploadedCount = result.documents.filter((document) => getReviewState(document.id).status === "Uploaded").length;
   const canSubmit = submissionBlockers.length === 0;
+  const packagePosture = !canSubmit
+    ? "Blocked"
+    : slaBreachDocuments.length > 0 || slaWatchDocuments.length > 0
+      ? "Controlled Watch"
+      : "Ready";
+  const baRecommendation =
+    packagePosture === "Blocked"
+      ? "Do not submit. Resolve missing documents, waiver approvals, and maker-checker blockers before moving to Credit Review."
+      : packagePosture === "Controlled Watch"
+        ? "Submission may proceed with documented operations follow-up for SLA watch or breach items."
+        : "Proceed to submission. Required document readiness and waiver controls are clear.";
 
   const updateInput = <K extends keyof ChecklistInput>(key: K, value: ChecklistInput[K]) => {
     setInput((current) => ({ ...current, [key]: value }));
@@ -142,6 +280,98 @@ export function DocumentChecklistGenerator() {
     setDocumentReview((current) => {
       const nextState = { ...(current[documentId] ?? defaultDocumentReviewState), ...patch };
       return { ...current, [documentId]: nextState };
+    });
+  };
+
+  const updateDocumentStatus = (documentId: string, status: DocumentStatus) => {
+    setDocumentReview((current) => {
+      const currentState = current[documentId] ?? defaultDocumentReviewState;
+      const nextState: DocumentReviewState =
+        status === "Waived"
+          ? {
+              ...currentState,
+              status,
+              waiverStatus: currentState.waiverStatus === "Not Requested" ? "Draft" : currentState.waiverStatus
+            }
+          : {
+              ...currentState,
+              status,
+              waiverReason: "",
+              waiverStatus: "Not Requested",
+              waiverDecisionNote: ""
+            };
+
+      return { ...current, [documentId]: nextState };
+    });
+  };
+
+  const submitWaiverRequest = (documentId: string) => {
+    const document = result.documents.find((item) => item.id === documentId);
+    const reviewState = getReviewState(documentId);
+    const hasReason = reviewState.waiverReason.trim().length > 0;
+    const makerCheckerClear = isWaiverMakerCheckerClear(reviewState);
+
+    updateDocumentReview(documentId, {
+      status: "Waived",
+      waiverStatus: hasReason && makerCheckerClear ? "Pending Approval" : "Draft",
+      waiverDecisionNote: hasReason
+        ? makerCheckerClear
+          ? "Waiver request submitted for independent approval."
+          : "Submission blocked because maker and approver are the same role."
+        : "Waiver reason is required before approval routing."
+    });
+
+    recordAuditEvent({
+      actor: reviewState.waiverMakerRole,
+      action: "Waiver request reviewed",
+      module: "Document Checklist",
+      referenceId: document?.id ?? documentId,
+      details: `${document?.name ?? documentId} waiver ${hasReason && makerCheckerClear ? "submitted for approval" : "kept in draft due to control blocker"}.`,
+      controlImpact: hasReason && makerCheckerClear ? "Medium" : "High"
+    });
+  };
+
+  const approveWaiver = (documentId: string) => {
+    const document = result.documents.find((item) => item.id === documentId);
+    const reviewState = getReviewState(documentId);
+    const canApprove =
+      reviewState.waiverReason.trim().length > 0 &&
+      reviewState.waiverStatus === "Pending Approval" &&
+      isWaiverMakerCheckerClear(reviewState);
+
+    updateDocumentReview(documentId, {
+      waiverStatus: canApprove ? "Approved" : reviewState.waiverStatus,
+      waiverDecisionNote: canApprove
+        ? "Waiver approved with maker-checker control."
+        : "Approval blocked until waiver is pending, justified, and maker-checker clear."
+    });
+
+    recordAuditEvent({
+      actor: reviewState.waiverApproverRole,
+      action: canApprove ? "Waiver approved" : "Waiver approval blocked",
+      module: "Document Checklist",
+      referenceId: document?.id ?? documentId,
+      details: `${document?.name ?? documentId} waiver ${canApprove ? "approved" : "was not approved because control criteria were not met"}.`,
+      controlImpact: canApprove ? "Medium" : "High"
+    });
+  };
+
+  const rejectWaiver = (documentId: string) => {
+    const document = result.documents.find((item) => item.id === documentId);
+    const reviewState = getReviewState(documentId);
+
+    updateDocumentReview(documentId, {
+      waiverStatus: "Rejected",
+      waiverDecisionNote: "Waiver rejected. Required evidence must be uploaded or a new justification must be submitted."
+    });
+
+    recordAuditEvent({
+      actor: reviewState.waiverApproverRole,
+      action: "Waiver rejected",
+      module: "Document Checklist",
+      referenceId: document?.id ?? documentId,
+      details: `${document?.name ?? documentId} waiver was rejected by ${reviewState.waiverApproverRole}.`,
+      controlImpact: "High"
     });
   };
 
@@ -179,6 +409,37 @@ export function DocumentChecklistGenerator() {
     });
   };
 
+  const exportPackageSummary = () => {
+    downloadCsv(
+      "credit-submission-package-summary.csv",
+      toCsv([
+        { metric: "Application Type", value: input.applicationType },
+        { metric: "Facility Type", value: input.facilityType },
+        { metric: "Collateral Type", value: input.collateralType },
+        { metric: "Customer Type", value: input.customerType },
+        { metric: "Risk Level", value: input.riskLevel },
+        { metric: "Financial Statement", value: input.financialStatementStatus },
+        { metric: "Package Posture", value: packagePosture },
+        { metric: "Required Readiness", value: `${readinessPercentage}%` },
+        { metric: "Submission Blockers", value: submissionBlockers.length },
+        { metric: "Approved Waivers", value: approvedWaiverDocuments.length },
+        { metric: "Pending Waivers", value: pendingWaiverDocuments.length },
+        { metric: "Rejected Waivers", value: rejectedWaiverDocuments.length },
+        { metric: "SLA Watch Items", value: slaWatchDocuments.length },
+        { metric: "SLA Breach Items", value: slaBreachDocuments.length },
+        { metric: "BA Recommendation", value: baRecommendation }
+      ])
+    );
+    recordAuditEvent({
+      actor: "BA Reviewer",
+      action: "Package summary exported",
+      module: "Document Checklist",
+      referenceId: `${input.applicationType} ${input.facilityType}`,
+      details: `Exported package summary with posture ${packagePosture}, ${submissionBlockers.length} blockers, and ${slaBreachDocuments.length} SLA breaches.`,
+      controlImpact: packagePosture === "Blocked" ? "High" : "Medium"
+    });
+  };
+
   const exportChecklist = () => {
     downloadCsv(
       "document-checklist-readiness.csv",
@@ -191,9 +452,16 @@ export function DocumentChecklistGenerator() {
             category: document.category,
             requirementLevel: document.requirementLevel,
             status: reviewState.status,
+            agingDays: reviewState.agingDays,
+            slaStatus: getSlaStatus(document.requirementLevel, reviewState),
             waiverReason: reviewState.waiverReason,
+            waiverStatus: reviewState.waiverStatus,
+            waiverMakerRole: reviewState.waiverMakerRole,
+            waiverApproverRole: reviewState.waiverApproverRole,
+            waiverDecisionNote: reviewState.waiverDecisionNote,
             submissionBlocking:
-              document.requirementLevel === "Required" && !isSubmissionReadyStatus(reviewState.status)
+              document.requirementLevel === "Required" &&
+              (!isSubmissionReadyStatus(reviewState.status) || !isWaiverComplete(reviewState))
                 ? "Yes"
                 : "No",
             businessRuleId: document.businessRuleId,
@@ -228,13 +496,15 @@ export function DocumentChecklistGenerator() {
 
   return (
     <div className="space-y-6">
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-6">
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <StatCard label="Total Documents" value={result.documents.length} helper="Generated by rule engine" />
         <StatCard label="Required" value={requiredCount} tone="danger" helper="Submission control items" />
         <StatCard label="Conditional" value={conditionalCount} tone="warning" helper="Depends on case context" />
         <StatCard label="Optional" value={optionalCount} helper="Supporting evidence" />
         <StatCard label="Readiness" value={`${readinessPercentage}%`} tone={canSubmit ? "success" : "warning"} helper={`${readyRequiredDocuments.length}/${requiredCount} required ready`} />
         <StatCard label="Blockers" value={submissionBlockers.length} tone={canSubmit ? "success" : "danger"} helper="Submission gate" />
+        <StatCard label="Open Waivers" value={pendingWaiverDocuments.length} tone={pendingWaiverDocuments.length > 0 ? "warning" : "success"} helper={`${approvedWaiverDocuments.length} approved`} />
+        <StatCard label="SLA Breach" value={slaBreachDocuments.length} tone={slaBreachDocuments.length > 0 ? "danger" : "success"} helper={`${slaWatchDocuments.length} watch items`} />
       </div>
 
       <div className="grid gap-6 xl:grid-cols-[360px_minmax(0,1fr)]">
@@ -321,6 +591,45 @@ export function DocumentChecklistGenerator() {
               </Button>
             </div>
           </Card>
+
+          <Card>
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <h2 className="text-lg font-semibold">Package Summary</h2>
+                <p className="mt-1 text-sm text-muted-foreground">Credit submission pack posture and BA recommendation.</p>
+              </div>
+              <Badge tone={packagePosture === "Ready" ? "success" : packagePosture === "Controlled Watch" ? "warning" : "danger"}>
+                {packagePosture}
+              </Badge>
+            </div>
+
+            <div className="mt-5 grid gap-3 text-sm">
+              {[
+                ["Application", `${input.applicationType} ${input.facilityType}`],
+                ["Collateral", input.collateralType],
+                ["Risk", `${input.riskLevel} risk`],
+                ["Waivers", `${approvedWaiverDocuments.length} approved / ${pendingWaiverDocuments.length} open / ${rejectedWaiverDocuments.length} rejected`],
+                ["SLA", `${slaBreachDocuments.length} breach / ${slaWatchDocuments.length} watch`]
+              ].map(([label, value]) => (
+                <div className="flex items-start justify-between gap-4 rounded-lg border p-3" key={label}>
+                  <span className="text-muted-foreground">{label}</span>
+                  <span className="text-right font-medium">{value}</span>
+                </div>
+              ))}
+            </div>
+
+            <div className="mt-5 rounded-lg border bg-muted/30 p-4">
+              <p className="text-sm font-semibold">BA Recommendation</p>
+              <p className="mt-2 text-sm leading-6 text-muted-foreground">{baRecommendation}</p>
+            </div>
+
+            <div className="mt-5">
+              <Button onClick={exportPackageSummary} variant="secondary">
+                <FileText className="h-4 w-4" />
+                Export Summary
+              </Button>
+            </div>
+          </Card>
         </div>
 
         <div className="space-y-6">
@@ -339,6 +648,102 @@ export function DocumentChecklistGenerator() {
               </div>
             </Card>
           ) : null}
+
+          <Card>
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <h2 className="text-lg font-semibold">Waiver Approval Queue</h2>
+                <p className="mt-1 text-sm text-muted-foreground">Maker-checker workflow for documents marked as waived.</p>
+              </div>
+              <Badge tone={pendingWaiverDocuments.length > 0 ? "warning" : waiverCount > 0 ? "success" : "default"}>
+                {waiverCount} waivers
+              </Badge>
+            </div>
+
+            <div className="mt-5 grid gap-3">
+              {reviewedDocuments.filter((item) => item.reviewState.status === "Waived").length === 0 ? (
+                <div className="rounded-lg border bg-muted/30 p-4 text-sm text-muted-foreground">
+                  No waiver requests yet. Set a document status to Waived to simulate approval governance.
+                </div>
+              ) : (
+                reviewedDocuments
+                  .filter((item) => item.reviewState.status === "Waived")
+                  .map(({ document, reviewState }) => (
+                    <div className="rounded-lg border p-4" key={document.id}>
+                      <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                        <div>
+                          <h3 className="font-semibold">{document.name}</h3>
+                          <p className="mt-1 text-sm text-muted-foreground">{document.businessRuleId} / {document.requirementLevel}</p>
+                        </div>
+                        <Badge tone={waiverTone(reviewState.waiverStatus)}>{reviewState.waiverStatus}</Badge>
+                      </div>
+
+                      <div className="mt-4 grid gap-3 md:grid-cols-3">
+                        <label className="grid gap-2 text-sm font-medium">
+                          Maker Role
+                          <select
+                            className="control"
+                            value={reviewState.waiverMakerRole}
+                            onChange={(event) => updateDocumentReview(document.id, { waiverMakerRole: event.target.value as UatRole })}
+                          >
+                            {workflowRoles.map((role) => (
+                              <option key={role} value={role}>
+                                {role}
+                              </option>
+                            ))}
+                          </select>
+                        </label>
+                        <label className="grid gap-2 text-sm font-medium">
+                          Approver Role
+                          <select
+                            className="control"
+                            value={reviewState.waiverApproverRole}
+                            onChange={(event) => updateDocumentReview(document.id, { waiverApproverRole: event.target.value as UatRole })}
+                          >
+                            {workflowRoles.map((role) => (
+                              <option key={role} value={role}>
+                                {role}
+                              </option>
+                            ))}
+                          </select>
+                        </label>
+                        <div className="grid gap-2 text-sm font-medium">
+                          Approval Status
+                          <div className="flex h-10 items-center rounded-md border bg-muted/30 px-3">
+                            <Badge tone={waiverTone(reviewState.waiverStatus)}>{reviewState.waiverStatus}</Badge>
+                          </div>
+                        </div>
+                      </div>
+
+                      {!isWaiverMakerCheckerClear(reviewState) ? (
+                        <div className="mt-4 rounded-lg border border-danger/20 bg-danger/10 p-3 text-sm text-danger">
+                          Maker-checker breach: maker and approver cannot be the same role.
+                        </div>
+                      ) : null}
+
+                      {reviewState.waiverDecisionNote ? (
+                        <p className="mt-4 rounded-lg border bg-muted/30 p-3 text-sm text-muted-foreground">
+                          {reviewState.waiverDecisionNote}
+                        </p>
+                      ) : null}
+
+                      <div className="mt-4 flex flex-wrap gap-2">
+                        <Button onClick={() => submitWaiverRequest(document.id)} variant="secondary">
+                          <ShieldCheck className="h-4 w-4" />
+                          Submit Request
+                        </Button>
+                        <Button onClick={() => approveWaiver(document.id)} variant="secondary">
+                          Approve
+                        </Button>
+                        <Button onClick={() => rejectWaiver(document.id)} variant="ghost">
+                          Reject
+                        </Button>
+                      </div>
+                    </div>
+                  ))
+              )}
+            </div>
+          </Card>
 
           <Card>
             <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
@@ -362,13 +767,15 @@ export function DocumentChecklistGenerator() {
             </div>
 
             <div className="mt-5 overflow-x-auto rounded-lg border">
-              <table className="w-full min-w-[1240px] border-collapse text-sm">
+              <table className="w-full min-w-[1480px] border-collapse text-sm">
                 <thead className="table-head">
                   <tr>
                     <th className="px-4 py-3 text-left">Document</th>
                     <th className="px-4 py-3 text-left">Category</th>
                     <th className="px-4 py-3 text-left">Level</th>
                     <th className="px-4 py-3 text-left">Status</th>
+                    <th className="px-4 py-3 text-left">Aging</th>
+                    <th className="px-4 py-3 text-left">SLA</th>
                     <th className="px-4 py-3 text-left">Waiver Reason</th>
                     <th className="px-4 py-3 text-left">Rule</th>
                     <th className="px-4 py-3 text-left">Reason</th>
@@ -377,6 +784,7 @@ export function DocumentChecklistGenerator() {
                 <tbody>
                   {filteredDocuments.map((document) => {
                     const reviewState = getReviewState(document.id);
+                    const slaStatus = getSlaStatus(document.requirementLevel, reviewState);
                     return (
                       <tr className="border-t align-top" key={document.id}>
                         <td className="px-4 py-3 font-medium">{document.name}</td>
@@ -389,7 +797,7 @@ export function DocumentChecklistGenerator() {
                             <select
                               className="control min-w-[160px]"
                               value={reviewState.status}
-                              onChange={(event) => updateDocumentReview(document.id, { status: event.target.value as DocumentStatus })}
+                              onChange={(event) => updateDocumentStatus(document.id, event.target.value as DocumentStatus)}
                             >
                               {documentStatuses.map((status) => (
                                 <option key={status} value={status}>
@@ -399,6 +807,18 @@ export function DocumentChecklistGenerator() {
                             </select>
                             <Badge tone={statusTone(reviewState.status)}>{reviewState.status}</Badge>
                           </div>
+                        </td>
+                        <td className="px-4 py-3">
+                          <input
+                            className="control w-24"
+                            min={0}
+                            onChange={(event) => updateDocumentReview(document.id, { agingDays: Number(event.target.value) })}
+                            type="number"
+                            value={reviewState.agingDays}
+                          />
+                        </td>
+                        <td className="px-4 py-3">
+                          <Badge tone={slaTone(slaStatus)}>{slaStatus}</Badge>
                         </td>
                         <td className="px-4 py-3">
                           {reviewState.status === "Waived" ? (
